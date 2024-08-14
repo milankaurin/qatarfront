@@ -1,55 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import GroupService from '../Api/GrupaService.js';
+import GrupaService from '../Api/GrupaService.js';
 import TimService from '../Api/TimService.js';
-import StadionService from '../Api/StadionService.js';
-import { Button, TextField, Table, TableBody, TableCell, TableHead, TableRow, Select, MenuItem, RadioGroup, FormControlLabel, Radio } from '@mui/material';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+import { Button, TextField, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 
-const GroupsComponent = () => {
+const GrupaKomponenta = ({ onGroupSelect }) => {
     const [groups, setGroups] = useState([]);
-    const [teams, setTeams] = useState([]);
     const [selectedGroupId, setSelectedGroupId] = useState(null);
-    const [teamName, setTeamName] = useState('');
     const [groupName, setGroupName] = useState('');
-    const [matchDate, setMatchDate] = useState(null);
-    const [selectedTeam1, setSelectedTeam1] = useState('');
-    const [selectedTeam2, setSelectedTeam2] = useState('');
-    const [matchOutcome, setMatchOutcome] = useState('played');
-    const [stadiums, setStadiums] = useState([]);
-    const [selectedStadium, setSelectedStadium] = useState('');
+    const [teams, setTeams] = useState([]);
+    const [teamName, setTeamName] = useState('');
 
     useEffect(() => {
         const fetchGroups = async () => {
             try {
-                const data = await GroupService.getAllGroups();
+                const data = await GrupaService.getAllGroups();
                 setGroups(data);
             } catch (error) {
                 console.error('Failed to fetch groups:', error);
             }
         };
-
         fetchGroups();
-    }, []);
-
-    useEffect(() => {
-        const fetchStadiums = async () => {
-            try {
-                const data = await StadionService.getAllStadiums();
-                setStadiums(data);
-            } catch (error) {
-                console.error('Failed to fetch stadiums:', error);
-            }
-        };
-
-        fetchStadiums();
     }, []);
 
     const handleCreateGroup = async () => {
         try {
-            await GroupService.createGroup(groupName);
-            setGroupName(''); // Clear the input field
-            const updatedGroups = await GroupService.getAllGroups();
+            await GrupaService.createGroup(groupName);
+            setGroupName('');
+            const updatedGroups = await GrupaService.getAllGroups();
             setGroups(updatedGroups);
         } catch (error) {
             console.error('Failed to create group:', error);
@@ -58,6 +35,7 @@ const GroupsComponent = () => {
 
     const handleGroupSelect = async (groupId) => {
         setSelectedGroupId(groupId);
+        onGroupSelect(groupId);
         try {
             const data = await TimService.getTeamsByGroupId(groupId);
             setTeams(data);
@@ -71,7 +49,7 @@ const GroupsComponent = () => {
             const teamData = {
                 imeTima: teamName,
                 grupaId: selectedGroupId,
-                zastavica: '', // Default to an empty string or null
+                zastavica: '',
                 brojPoena: 0,
                 brojPobeda: 0,
                 brojPoraza: 0,
@@ -81,21 +59,16 @@ const GroupsComponent = () => {
             };
 
             await TimService.createTeam(teamData);
-            setTeamName(''); // Clear the input field
+            setTeamName('');
             const updatedTeams = await TimService.getTeamsByGroupId(selectedGroupId);
             setTeams(updatedTeams);
-
         } catch (error) {
             console.error('Failed to create team:', error);
         }
     };
-    const handleMatchSchedule = async () => {
-        // Placeholder for handling the match scheduling logic
-        // You would typically create a new service method in `UtakmicaService.js` to handle this
-    };
 
     return (
-        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
+        <div>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
                 <TextField
                     label="Ime Grupe"
@@ -168,95 +141,10 @@ const GroupsComponent = () => {
                             </Button>
                         </div>
                     )}
-
-                    <div style={{ marginTop: '40px', textAlign: 'center' }}>
-                        <h3>Zakazivanje Utakmice</h3>
-                        <Select
-                            value={selectedTeam1}
-                            onChange={(e) => setSelectedTeam1(e.target.value)}
-                            displayEmpty
-                            style={{ marginRight: '10px', minWidth: '150px' }}
-                        >
-                            <MenuItem value="" disabled>
-                                Odaberite Prvi Tim
-                            </MenuItem>
-                            {teams.map(team => (
-                                <MenuItem key={team.id} value={team.id}>
-                                    {team.imeTima}
-                                </MenuItem>
-                            ))}
-                        </Select>
-
-                        <Select
-                            value={selectedTeam2}
-                            onChange={(e) => setSelectedTeam2(e.target.value)}
-                            displayEmpty
-                            style={{ marginRight: '10px', minWidth: '150px' }}
-                        >
-                            <MenuItem value="" disabled>
-                                Odaberite Drugi Tim
-                            </MenuItem>
-                            {teams.map(team => (
-                                <MenuItem key={team.id} value={team.id}>
-                                    {team.imeTima}
-                                </MenuItem>
-                            ))}
-                        </Select>
-
-                        <RadioGroup
-                            row
-                            value={matchOutcome}
-                            onChange={(e) => setMatchOutcome(e.target.value)}
-                            style={{ marginTop: '20px', justifyContent: 'center' }}
-                        >
-                            <FormControlLabel value="played" control={<Radio />} label="Utakmica se odigrava" />
-                            <FormControlLabel value="forfeit1" control={<Radio />} label="Tim 1 predao" />
-                            <FormControlLabel value="forfeit2" control={<Radio />} label="Tim 2 predao" />
-                        </RadioGroup>
-
-                        {matchOutcome === 'played' && (
-                            <>
-                                <Select
-                                    value={selectedStadium}
-                                    onChange={(e) => setSelectedStadium(e.target.value)}
-                                    displayEmpty
-                                    style={{ marginRight: '10px', marginTop: '20px', minWidth: '150px' }}
-                                >
-                                    <MenuItem value="" disabled>
-                                        Odaberite Stadion
-                                    </MenuItem>
-                                    {stadiums.map(stadium => (
-                                        <MenuItem key={stadium.id} value={stadium.id}>
-                                            {stadium.nazivStadiona}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-
-                                <DatePicker
-                                    selected={matchDate}
-                                    onChange={(date) => setMatchDate(date)}
-                                    showTimeSelect
-                                    timeFormat="HH:mm"
-                                    timeIntervals={15}
-                                    dateFormat="MMMM d, yyyy h:mm aa"
-                                    placeholderText="Izaberite datum i vreme"
-                                    style={{ marginTop: '20px' }}
-                                />
-                            </>
-                        )}
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            style={{ marginTop: '20px' }}
-                            onClick={handleMatchSchedule}
-                        >
-                            Zakazite Utakmicu
-                        </Button>
-                    </div>
                 </>
             )}
         </div>
     );
 };
 
-export default GroupsComponent;
+export default GrupaKomponenta;
