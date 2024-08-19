@@ -21,7 +21,16 @@ const getAllGroups = async () => {
     }
 };
 
+const deleteGroup = async (groupId) => {
+    try {
+        return await axios.delete(`${API_URL}/${groupId}`);
+    } catch (error) {
+        throw error;
+    }
+};
+
 export default {
     createGroup,
     getAllGroups,
+    deleteGroup
 };

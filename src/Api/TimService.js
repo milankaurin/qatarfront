@@ -28,8 +28,18 @@ const getTeamById = async (id) => {
     }
 };
 
+
+
+const deleteTeamsByGroupId = async (groupId) => {
+    try {
+        return await axios.delete(`${API_URL}/tim/byGrupa/${groupId}`);
+    } catch (error) {
+        throw error;
+    }
+};
 export default {
     getTeamsByGroupId, 
     createTeam, 
-    getTeamById
+    getTeamById,
+    deleteTeamsByGroupId
 };

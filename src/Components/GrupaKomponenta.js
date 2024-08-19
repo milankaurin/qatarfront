@@ -3,7 +3,7 @@ import GrupaService from '../Api/GrupaService.js';
 import TimService from '../Api/TimService.js';
 import UtakmicaService from '../Api/UtakmicaService.js';
 import StadionService from '../Api/StadionService.js';
-import { Button, TextField, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
+import { Button, TextField, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 import ScheduleMatchComponent from './UtakmicaKomponenta.js';
 
 const GrupaKomponenta = () => {
@@ -13,6 +13,8 @@ const GrupaKomponenta = () => {
     const [teams, setTeams] = useState([]);
     const [teamName, setTeamName] = useState('');
     const [matches, setMatches] = useState([]);
+    const [openDialog, setOpenDialog] = useState(false);
+    const [groupToDelete, setGroupToDelete] = useState(null);
 
     useEffect(() => {
         fetchGroups();
@@ -26,6 +28,62 @@ const GrupaKomponenta = () => {
             console.error('Failed to fetch groups:', error);
         }
     };
+
+    const handleOpenDialog = (groupId) => {
+        setOpenDialog(true);
+        setGroupToDelete(groupId);
+    };
+
+    const handleCloseDialog = () => {
+        setOpenDialog(false);
+    };
+
+    const handleDeleteGroup = async () => {
+        if (groupToDelete) {
+            try {
+                // Brisanje grupe sa svim entitetima
+                await deleteAllMatchesInGroup(groupToDelete);
+                await deleteAllTeamsInGroup(groupToDelete);
+                await GrupaService.deleteGroup(groupToDelete);
+                alert("Grupa i sve povezane entitete su uspešno obrisane!");
+                fetchGroups(); // Osvežavanje liste grupa
+            } catch (error) {
+                console.error('Failed to delete group and its entities:', error);
+                alert("Došlo je do greške pri brisanju grupe i povezanih entiteta.");
+            }
+        }
+        handleCloseDialog();
+    };
+
+
+    const deleteAllMatchesInGroup = async (groupId) => {
+        const matches = await UtakmicaService.getMatchesByGroupId(groupId);
+        for (let match of matches) {
+            await UtakmicaService.deleteMatch(match.id);
+        }
+    };
+    
+    // Helper funkcija za brisanje svih timova u grupi
+    const deleteAllTeamsInGroup = async (groupId) => {
+        const teams = await TimService.getTeamsByGroupId(groupId);
+        for (let team of teams) {
+            await TimService.deleteTeamById(team.id);
+        }
+    };
+
+    const handleDeleteMatch = async (id) => {
+        if (window.confirm("Da li ste sigurni da želite da obrišete utakmicu?")) {
+            try {
+                await UtakmicaService.deleteMatch(id);
+                alert("Utakmica je uspešno obrisana!");
+                fetchMatches(selectedGroupId); // Osvežavanje lista utakmica
+            } catch (error) {
+                console.error('Failed to delete match:', error);
+                alert("Došlo je do greške pri brisanju utakmice.");
+            }
+        }
+    };
+    
 
     const handleCreateGroup = async () => {
         try {
@@ -190,7 +248,6 @@ const GrupaKomponenta = () => {
                     </Button>
                 ))}
             </div>
-
             {selectedGroupId && (
                 <>
                     <Table style={{ margin: '0 auto', width: '80%', marginTop: '20px' }}>
@@ -232,28 +289,23 @@ const GrupaKomponenta = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {matches.map(match => (
-                                <TableRow key={match.id}>
-                                    <TableCell>{match.team1Name}</TableCell>
-                                    <TableCell>{match.team2Name}</TableCell>
-                                    <TableCell>{new Date(match.vremePocetka).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</TableCell>
-                                    <TableCell>
-                                        {match.predato
-                                            ? (match.tim1Predao ? `${match.team1Name} predao` : `${match.team2Name} predao`)
-                                            : `${match.tim1Golovi !== null ? match.tim1Golovi : 'N/A'} - ${match.tim2Golovi !== null ? match.tim2Golovi : 'N/A'}`
-                                        }
-                                    </TableCell>
-                                    <TableCell>{match.stadionId ? match.stadiumName : 'Undefined'}</TableCell>
-                                    <TableCell>
-                                        {match.tim1Golovi === null && match.tim2Golovi === null && !match.predato && (
-                                            <Button variant="contained" color="primary" onClick={() => handleSetResult(match.id)}>
-                                                Postavi Rezultat
-                                            </Button>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
+    {matches.map(match => (
+        <TableRow key={match.id}>
+            <TableCell>{match.team1Name}</TableCell>
+            <TableCell>{match.team2Name}</TableCell>
+            <TableCell>{new Date(match.vremePocetka).toLocaleString()}</TableCell>
+            <TableCell>{match.predato ? 'Predato' : match.tim1Golovi !== null ? `${match.tim1Golovi} - ${match.tim2Golovi}` : 'N/A'}</TableCell>
+            <TableCell>{match.stadionId ? match.stadiumName : 'Undefined'}</TableCell>
+            <TableCell>
+                {match.tim1Golovi === null && !match.predato && (
+                    <Button variant="contained" color="secondary" onClick={() => handleDeleteMatch(match.id)}>
+                        Obriši Utakmicu
+                    </Button>
+                )}
+            </TableCell>
+        </TableRow>
+    ))}
+</TableBody>    
                     </Table>
 
                     {teams.length < 4 && (
